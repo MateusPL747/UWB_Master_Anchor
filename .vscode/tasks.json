@@ -1,0 +1,41 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build clean",
+            "type": "shell",
+            "group": "build",
+            "command": "echo S | make -j16 clean"
+        },
+        {
+            "label": "Build all",
+            "group": "build",
+            "type": "shell",
+            "command": "make",
+            "args": ["all"/*, "-j16"*/]
+        },
+        {
+            "label": "JFlash",
+            "type": "shell",
+            "group": "build",
+            "command": "st-flash",
+            "args": [
+                "--reset",
+                "write",
+                "${workspaceFolder}/build/BU01_STATION.bin",
+                "'0x08000000'"
+            ]
+        },
+        {
+            "label": "start",
+            "dependsOrder": "sequence",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "dependsOn": ["Build clean", "Build all", "JFlash"]
+        }
+    ]
+}

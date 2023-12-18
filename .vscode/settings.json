@@ -1,0 +1,21 @@
+{
+    "files.associations": {
+        "main.h": "c",
+        "motorcontrol.h": "c",
+        "mc_config.h": "c",
+        "pid_regulator.h": "c",
+        "mc_type.h": "c",
+        "mc_stm_types.h": "c",
+        "ui_task.h": "c",
+        "usart_frame_communication_protocol.h": "c",
+        "frame_communication_protocol.h": "c",
+        "usb_device.h": "c",
+        "lcd.h": "c",
+        "deca_device_api.h": "c",
+        "port.h": "c",
+        "deca_spi.h": "c"
+    },
+
+    "cortex-debug.gdbPath": "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2021.10/bin/arm-none-eabi-gdb",
+    "cortex-debug.stutilPath": "C:/Program Files (x86)/stlink-1.7.0-x86_64-w64-mingw32/bin/st-util"
+}

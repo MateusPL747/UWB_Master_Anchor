@@ -1,0 +1,62 @@
+// Configure debug launch settings
+// Feel free to copy these and modify them for your debugger and MCU
+{
+    "version": "0.2.0",
+    "projectName": "BU01_STATION",
+    "configurations": [
+        {
+            "name": "STlink launch",
+            "showDevDebugOutput": "raw",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/BU01_STATION.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "stutil",
+            "device": "STM32F103C8",
+            "interface": "swd",
+            "runToEntryPoint": "main", // else it starts at reset handler - not interested
+            // "preLaunchTask": "Build all", // configured in tasks.json
+            // "preLaunchCommands": ["Build all"], // you can execute command instead of task
+            "svdFile": "", // Include svd to watch device peripherals
+            "swoConfig": {} // currently (v1.7.0) not supported
+        },
+        {
+            "name": "STlink attach",
+            "showDevDebugOutput": "raw",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/BU01_STATION.elf",
+            "request": "attach",
+            "type": "cortex-debug",
+            "servertype": "stutil",
+            "device": "STM32F103C8",
+            "interface": "swd",
+            "runToEntryPoint": "main", // else it starts at reset handler - not interested
+            // "preLaunchTask": "Build all", // configured in tasks.json
+            // "preLaunchCommands": ["Build all"], // you can execute command instead of task
+            "svdFile": "", // Include svd to watch device peripherals
+            "swoConfig": {} // currently (v1.7.0) not supported
+        },
+        {
+            "name": "Cortex Debug",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/BU01_STATION.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "interface":"swd",
+            "device": "STM32F103C8",
+            "configFiles": [
+            "interface/stlink-v2.cfg",
+            "target/stm32f1x.cfg",
+            ],
+            "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 5
+            },
+            "openOCDLaunchCommands": ["adapter speed 4000"],
+            "runToEntryPoint": "main",
+            "svdFile": "${workspaceFolder}/.vscode/STM32F103xx.svd",
+            "rtos": "FreeRTOS"
+        }
+    ]
+}
