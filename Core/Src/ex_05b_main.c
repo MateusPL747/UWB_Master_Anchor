@@ -50,7 +50,7 @@ static dwt_config_t config = {
 #define RX_ANT_DLY 16576
 
 /* Frames used in the ranging process. See NOTE 2 below. */
-static uint8 tx_ping[] = {'T', 'E', 'S', 'T', 0, 0};
+static uint8 tx_ping[] = { 0xDE, 0xCA, 0, 0};
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -110,6 +110,7 @@ uint8_t dist_str[16];
 
 /* time interval for blinking LED */
 int32_t ledBlinkInterval = 0;
+/* time interval for sending ping messages */
 
 /* Declaration of static functions. */
 static uint64 get_tx_timestamp_u64(void);
@@ -158,6 +159,12 @@ int dw_main( UART_HandleTypeDef * huart1 )
     /* Loop forever responding to ranging requests. */
     while (1)
     {
+
+        // Ping it's ID every cycle
+        dwt_writetxdata( sizeof( tx_ping ), tx_ping, 0 );
+        dwt_writetxfctrl( sizeof( tx_ping ), 0, 1 );
+        dwt_starttx( DWT_START_TX_IMMEDIATE );
+
         /* Clear reception timeout to start next ranging process. */
         dwt_setrxtimeout(0);
 
@@ -168,14 +175,6 @@ int dw_main( UART_HandleTypeDef * huart1 )
         /* Poll for reception of a frame or error/timeout. See NOTE 8 below. */
         while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
         {
-            // Ping it's ID every 1 second
-            if ( HAL_GetTick() - ping_time > PING_INTERVAL ) {
-                dwt_writetxdata( sizeof( tx_ping ), tx_ping, 0 );
-                dwt_writetxfctrl( sizeof( tx_ping ), 0, 1 );
-                dwt_starttx( DWT_START_TX_IMMEDIATE );
-
-                ping_time = HAL_GetTick();
-            }
         };
 
         if (status_reg & SYS_STATUS_RXFCG)
