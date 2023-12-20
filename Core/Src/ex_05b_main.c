@@ -50,7 +50,7 @@ static dwt_config_t config = {
 #define RX_ANT_DLY 16576
 
 /* Frames used in the ranging process. See NOTE 2 below. */
-static uint8 tx_ping[] = { 0xDE, 0xCA, 0, 0};
+static uint8 tx_ping[] = { 0xFE, 0, 0, 0, 0};
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -62,6 +62,22 @@ static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x
 #define FINAL_MSG_RESP_RX_TS_IDX 14
 #define FINAL_MSG_FINAL_TX_TS_IDX 18
 #define FINAL_MSG_TS_LEN 4
+
+/* Define destinations ID position inside the message's  array*/
+// For trasmited datas
+#define RX_DESTINATION_ADD_IDX_1 7
+#define RX_DESTINATION_ADD_IDX_2 8
+#define RX_OWN_ADD_IDX_1 5
+#define RX_OWN_ADD_IDX_2 6
+
+//  For received datas
+#define TX_DESTINATION_ADD_IDX_1 7
+#define TX_DESTINATION_ADD_IDX_2 8
+#define TX_OWN_ADD_IDX_1 5
+#define TX_OWN_ADD_IDX_2 6
+
+#define OWN_ADD 0xb3a4
+
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb = 0;
 
@@ -156,6 +172,22 @@ int dw_main( UART_HandleTypeDef * huart1 )
     /* Set preamble timeout for expected frames. See NOTE 6 below. */
     dwt_setpreambledetecttimeout(PRE_TIMEOUT);
 
+    /* Sets the tag own ID for transmitted and received data*/
+    // First, the transmitter
+    rx_poll_msg[ TX_OWN_ADD_IDX_1 ] = (OWN_ADD & 0xFF00) >> 8;
+    rx_poll_msg[ TX_OWN_ADD_IDX_2 ] = OWN_ADD & 0xFF;
+    // --
+    tx_resp_msg[ TX_OWN_ADD_IDX_1 ] = (OWN_ADD & 0xFF00) >> 8;
+    tx_resp_msg[ TX_OWN_ADD_IDX_2 ] = OWN_ADD & 0xFF;
+
+    // Then the received
+    tx_resp_msg[ RX_OWN_ADD_IDX_1 ] = (OWN_ADD & 0xFF00) >> 8;
+    tx_resp_msg[ RX_OWN_ADD_IDX_2 ] = OWN_ADD & 0xFF;
+
+    /* Also, sets its own ID for the ping message */
+    tx_ping[ 1 ] = (OWN_ADD & 0xFF00) >> 8;
+    tx_ping[ 2 ] = OWN_ADD & 0xFF;
+
     /* Loop forever responding to ranging requests. */
     while (1)
     {
@@ -171,11 +203,11 @@ int dw_main( UART_HandleTypeDef * huart1 )
         /* Activate reception immediately. */
         dwt_rxenable(DWT_START_RX_IMMEDIATE);
 
-        int32_t ping_time = HAL_GetTick();
         /* Poll for reception of a frame or error/timeout. See NOTE 8 below. */
         while (!((status_reg = dwt_read32bitreg(SYS_STATUS_ID)) & (SYS_STATUS_RXFCG | SYS_STATUS_ALL_RX_TO | SYS_STATUS_ALL_RX_ERR)))
-        {
-        };
+        {};
+
+
 
         if (status_reg & SYS_STATUS_RXFCG)
         {
@@ -190,6 +222,15 @@ int dw_main( UART_HandleTypeDef * huart1 )
             {
                 dwt_readrxdata(rx_buffer, frame_len, 0);
             }
+
+            rx_poll_msg[ RX_DESTINATION_ADD_IDX_1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            rx_poll_msg[ RX_DESTINATION_ADD_IDX_2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
+            // --
+            tx_resp_msg[ TX_DESTINATION_ADD_IDX_1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            tx_resp_msg[ TX_DESTINATION_ADD_IDX_2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
+            // --
+            rx_final_msg[ RX_DESTINATION_ADD_IDX_1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            rx_final_msg[ RX_DESTINATION_ADD_IDX_2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
 
             /* Check that the frame is a poll sent by "DS TWR initiator" example.
              * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
