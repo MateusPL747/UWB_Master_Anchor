@@ -17,6 +17,15 @@
             "args": ["all"/*, "-j16"*/]
         },
         {
+            "label": "JErase",
+            "type": "shell",
+            "group": "build",
+            "command": "st-flash",
+            "args": [
+                "erase"
+            ]
+        },
+        {
             "label": "JFlash",
             "type": "shell",
             "group": "build",
@@ -26,7 +35,8 @@
                 "write",
                 "${workspaceFolder}/build/BU01_STATION.bin",
                 "'0x08000000'"
-            ]
+            ],
+            "dependsOn": ["JErase"]
         },
         {
             "label": "start",
