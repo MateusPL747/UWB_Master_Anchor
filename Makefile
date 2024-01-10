@@ -37,20 +37,20 @@ BUILD_DIR = build
 # C sources
 C_SOURCES =  \
 Core/Src/main.c \
-Core/ex_05b_main.c \
-Core/deca_device.c \
-Core/deca_mutex.c \
-Core/deca_params_init.c \
-Core/deca_range_tables.c \
-Core/deca_sleep.c \
-Core/deca_spi.c \
-Core/lcd.c \
-Core/port.c \
-Core/stm32f1xx_hal_msp.c \
-Core/stm32f1xx_it.c \
-Core/system_stm32f1xx.c \
+Core/Src/ex_05b_main.c \
+Core/Src/deca_device.c \
+Core/Src/deca_mutex.c \
+Core/Src/deca_params_init.c \
+Core/Src/deca_range_tables.c \
+Core/Src/deca_sleep.c \
+Core/Src/deca_spi.c \
+Core/Src/port.c \
+Core/Src/stm32f1xx_hal_msp.c \
+Core/Src/stm32f1xx_it.c \
+Core/Src/system_stm32f1xx.c \
 Core/Src/stm32f1xx_it.c \
 Core/Src/stm32f1xx_hal_msp.c \
+Core/Src/mqtt.c\
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_gpio_ex.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim.c \
 Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c \

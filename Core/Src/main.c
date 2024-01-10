@@ -105,6 +105,18 @@ int main(void)
   };
     // setup_DW1000RSTnIRQ(0);
     dw_main( &huart1 );
+
+  mqtt_init (
+    NULL,
+    NULL,
+    "mqtt-explorer-drvttgh"
+  );
+
+  AT_usart_init_config(
+    &huart1,
+    "claro.com.br", "claro", "claro",
+    "broker.hivemq.com", "", "", 1883
+  );
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -114,6 +126,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+    GSM_task();
+
+    HAL_GPIO_TogglePin( LED_2_GPIO_Port, LED_2_Pin );
+    HAL_Delay( 1 );
+  
   }
   /* USER CODE END 3 */
 }

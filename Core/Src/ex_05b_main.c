@@ -23,10 +23,8 @@
 
 #include "deca_device_api.h"
 #include "deca_regs.h"
-// #include "lcd.h"
 #include "deca_spi.h"
 #include "port.h"
-// #include "usbd_cdc_if.h"
 
 /* Example application name and version to display on LCD screen. */
 #define APP_NAME "DS TWR RESP v1.2"
@@ -49,11 +47,19 @@ static dwt_config_t config = {
 #define TX_ANT_DLY 16576
 #define RX_ANT_DLY 16576
 
+#define POLL_DISTANCE
+
 /* Frames used in the ranging process. See NOTE 2 below. */
 static uint8 ping_msg[] = {'W', 'A', 'V', 'E', 0, 0};
+static uint8 tx_ping[] = { 0xFE, 0, 0, 0, 0};
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};
 static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+#ifdef POLL_DISTANCE
+    //  0. Msg ID   1. Dest. ID1    2. Dest. ID2    3.  Own ID1     4. Own ID2  5. Data1    6. Data1 
+    //  7. Data1    8. Data1        9. Data1        10. Data1       11. Data1   12. Data1   13. ChkSum1 14. ChkSum2
+    static uint8 tx_distance_fdbk[] = { 0xAA, 0, 0, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#endif
 /* Length of the common part of the message (up to and including the function code, see NOTE 2 below). */
 #define ALL_MSG_COMMON_LEN 10
 /* Index to access some of the fields in the frames involved in the process. */
@@ -62,8 +68,26 @@ static uint8 rx_final_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x
 #define FINAL_MSG_RESP_RX_TS_IDX 14
 #define FINAL_MSG_FINAL_TX_TS_IDX 18
 #define FINAL_MSG_TS_LEN 4
+
+/* Define destinations ID position inside the message's  array*/
+// For trasmited datas
+#define RX_DESTINATION_ADD_IDX_1 7
+#define RX_DESTINATION_ADD_IDX_2 8
+#define RX_OWN_ADD_IDX_1 5
+#define RX_OWN_ADD_IDX_2 6
+
+//  For received datas
+#define TX_DESTINATION_ADD_IDX_1 5
+#define TX_DESTINATION_ADD_IDX_2 6
+#define TX_OWN_ADD_IDX_1 7
+#define TX_OWN_ADD_IDX_2 8
+
+#define OWN_ADD 0xb3a5
+
 /* Frame sequence number, incremented after each transmission. */
 static uint8 frame_seq_nb = 0;
+
+#define PING_INTERVAL 1000 //miliseconds
 
 /* Buffer to store received messages.
  * Its size is adjusted to longest frame that this example code is supposed to handle. */
@@ -87,6 +111,8 @@ static uint32 status_reg = 0;
 #define FINAL_RX_TIMEOUT_UUS 3300
 /* Preamble timeout, in multiple of PAC size. See NOTE 6 below. */
 #define PRE_TIMEOUT 8
+/* Ping tags period */
+#define PING_PERIOD 1000 // This period must be higher than the ranging period so it would not interfeer on the ranging process
 
 /* Timestamps of frames transmission/reception.
  * As they are 40-bit wide, we need to define a 64-bit int type to handle them. */
@@ -108,6 +134,7 @@ uint8_t dist_str[16];
 
 /* time interval for blinking LED */
 int32_t ledBlinkInterval = 0;
+/* time interval for sending ping messages */
 
 /* Declaration of static functions. */
 static uint64 get_tx_timestamp_u64(void);
@@ -153,13 +180,40 @@ int dw_main( UART_HandleTypeDef * huart1 )
     /* Set preamble timeout for expected frames. See NOTE 6 below. */
     dwt_setpreambledetecttimeout(PRE_TIMEOUT);
 
+    /* Sets the tag own ID for transmitted and received data*/
+    // First, the transmitter
+    rx_poll_msg[ RX_OWN_ADD_IDX_1 ] = (OWN_ADD & 0xFF00) >> 8;
+    rx_poll_msg[ RX_OWN_ADD_IDX_2 ] = OWN_ADD & 0xFF;
+    // --
+    tx_resp_msg[ TX_OWN_ADD_IDX_1 ] = (OWN_ADD & 0xFF00) >> 8;
+    tx_resp_msg[ TX_OWN_ADD_IDX_2 ] = OWN_ADD & 0xFF;
+
+    // Then the received
+    rx_final_msg[ RX_OWN_ADD_IDX_1 ] = (OWN_ADD & 0xFF00) >> 8;
+    rx_final_msg[ RX_OWN_ADD_IDX_2 ] = OWN_ADD & 0xFF;
+
+    /* Also, sets its own ID for the ping and distance fdbk message */
+    tx_ping[ 1 ] = (OWN_ADD & 0xFF00) >> 8;
+    tx_ping[ 2 ] = OWN_ADD & 0xFF;
+
+    tx_distance_fdbk[ 3 ] = (OWN_ADD & 0xFF00) >> 8;
+    tx_distance_fdbk[ 4 ] = OWN_ADD & 0xFF;
+
+    /*  */
+    static int32_t time_to_ping = 0;
+
     /* Loop forever responding to ranging requests. */
     while (1)
     {
 
-        dwt_writetxdata( sizeof( ping_msg ), ping_msg, 0 );
-        dwt_writetxfctrl( sizeof( ping_msg ), 0, 1 );
-        dwt_starttx( DWT_START_TX_IMMEDIATE );
+        if ( HAL_GetTick() - time_to_ping > PING_PERIOD ) {
+            // Ping it's ID every cycle
+            dwt_writetxdata( sizeof( tx_ping ), tx_ping, 0 );
+            dwt_writetxfctrl( sizeof( tx_ping ), 0, 1 );
+            dwt_starttx( DWT_START_TX_IMMEDIATE );
+
+            time_to_ping = HAL_GetTick();
+        }
 
         /* Clear reception timeout to start next ranging process. */
         dwt_setrxtimeout(0);
@@ -184,6 +238,18 @@ int dw_main( UART_HandleTypeDef * huart1 )
             {
                 dwt_readrxdata(rx_buffer, frame_len, 0);
             }
+
+            rx_poll_msg[ RX_DESTINATION_ADD_IDX_1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            rx_poll_msg[ RX_DESTINATION_ADD_IDX_2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
+            // --
+            tx_resp_msg[ TX_DESTINATION_ADD_IDX_1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            tx_resp_msg[ TX_DESTINATION_ADD_IDX_2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
+            // --
+            tx_distance_fdbk[ 1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            tx_distance_fdbk[ 2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
+            // --
+            rx_final_msg[ RX_DESTINATION_ADD_IDX_1 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_1 ];
+            rx_final_msg[ RX_DESTINATION_ADD_IDX_2 ] = rx_buffer[ RX_DESTINATION_ADD_IDX_2 ];
 
             /* Check that the frame is a poll sent by "DS TWR initiator" example.
              * As the sequence number field of the frame is not relevant, it is cleared to simplify the validation of the frame. */
@@ -267,13 +333,41 @@ int dw_main( UART_HandleTypeDef * huart1 )
                         tof = tof_dtu * DWT_TIME_UNITS;
                         distance = tof * SPEED_OF_LIGHT;
 
-                        /* Display computed distance on LCD. */
-                        sprintf(dist_str, "b %X%X %4.2f e\r", rx_buffer[4], rx_buffer[3], distance);
-                        HAL_UART_Transmit( huart1, dist_str, sizeof( dist_str ), 15 );
+                        #ifdef POLL_DISTANCE
+                            uint8_t * tx_distance_fdbk_buff;
+                            tx_distance_fdbk_buff = (uint8_t *)(&distance);
+
+
+                            for ( int i = 0; i < 8; i++ ) {
+                                tx_distance_fdbk[5 + i] = tx_distance_fdbk_buff[i];
+                            }
+
+                            // /* Set expected delay and timeout for final message reception. See NOTE 4 and 5 below. */
+                            // dwt_setrxaftertxdelay(0);
+                            // dwt_setrxtimeout(2* FINAL_RX_TIMEOUT_UUS);
+
+                            // Ping it's ID every cycle
+                            dwt_writetxdata( sizeof( tx_distance_fdbk ), tx_distance_fdbk, 0 );
+                            dwt_writetxfctrl( sizeof( tx_distance_fdbk ), 0, 1 );
+                            ret = dwt_starttx( DWT_START_TX_IMMEDIATE );
+
+                            /* If dwt_starttx() returns an error, abandon this ranging exchange and proceed to the next one. See NOTE 12 below. */
+                            if (ret == DWT_SUCCESS) {
+
+                                /* Poll DW1000 until TX frame sent event set. See NOTE 9 below. */
+                                while (!(dwt_read32bitreg(SYS_STATUS_ID) & SYS_STATUS_TXFRS))
+                                { };
+
+                                /* Clear TXFRS event. */
+                                dwt_write32bitreg(SYS_STATUS_ID, SYS_STATUS_TXFRS);
+
+                            }
+
+                        #endif
                         
                         
                     }
-                }
+                } 
                 else
                 {
                     /* Clear RX error/timeout events in the DW1000 status register. */
