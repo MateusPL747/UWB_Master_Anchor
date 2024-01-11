@@ -9,11 +9,10 @@ void mqtt_init ( char * mqtt_user, char * mqtt_psw, char * mqtt_id );
 
 void mqtt_task ();
 
-
 typedef struct {
     int availableToSend;
     char msgBuff[61];
-
+    size_t totalMsgLen;
     char * id;
     char * user;
     char * psw;

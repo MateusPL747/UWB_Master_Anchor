@@ -58,9 +58,13 @@ void AT_usart_init_config(
     );
 }
 
-void sendAT(char *msg )
+void sendAT(char *msg, size_t sizetoSend )
 {
-    HAL_UART_Transmit_IT(stateMachine.huartAT, (const unsigned char *) msg, strlen(msg));
+    if ( sizetoSend == NULL ) {
+        HAL_UART_Transmit_IT(stateMachine.huartAT, (const unsigned char *) msg, strlen(msg));
+    } else {
+        HAL_UART_Transmit_IT(stateMachine.huartAT, (const unsigned char *) msg, sizetoSend);
+    }
 }
 
 void GSM_task(){
@@ -81,6 +85,6 @@ void GSM_task(){
         return;
 
     stateMachine.lastChangestateTime = HAL_GetTick();
-    sendAT( stateMachine.command );
+    sendAT( stateMachine.command, NULL );
 
 }

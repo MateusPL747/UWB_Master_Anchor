@@ -14,7 +14,7 @@
             "group": "build",
             "type": "shell",
             "command": "make",
-            "args": ["all"/*, "-j16"*/]
+            "args": ["all", "-j16"]
         },
         {
             "label": "JErase",
@@ -45,7 +45,7 @@
                 "kind": "build",
                 "isDefault": true
             },
-            "dependsOn": ["Build clean", "Build all", "JFlash"]
+            "dependsOn": ["Build all", "JFlash"]
         }
     ]
 }

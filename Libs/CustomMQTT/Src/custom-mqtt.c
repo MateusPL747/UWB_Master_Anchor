@@ -131,7 +131,7 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
             
     }
     
-    int8_t totalMsgLen = (int8_t)( sizeof( HeaderFlag ) + msgLen );
+    int8_t totalMsgLen = (int8_t)( sizeof( HeaderFlag ) + (msgLen + 1) );
     
     char * buff = (char*)malloc(totalMsgLen);
     if ( buff == NULL ) {
@@ -160,11 +160,12 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
     }
     
     memcpy( mqtt_handle.msgBuff, buff, totalMsgLen );
-    sendAT( "AT+CIPSEND\r\n" );
+    mqtt_handle.totalMsgLen = totalMsgLen;
+    sendAT( "AT+CIPSEND\r\n", NULL );
 
     mqtt_handle.availableToSend = 1;
 
-    for ( int i = 0; i <= totalMsgLen; i++ ) {
+    for ( int i = 0; i < totalMsgLen; i++ ) {
         printf( "%02X ", buff[i] );
     }
 

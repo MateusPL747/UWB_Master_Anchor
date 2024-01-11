@@ -128,7 +128,7 @@ void setRejectExcepcted(char *newReject);
 
 void AT_usart_init_config(UART_HandleTypeDef *huart, char *apn_host, char *apn_user, char *apn_psw, char * mqtt_host, char * mqtt_user, char * mqtt_psw, int mqtt_port);
 
-void sendAT(char *cmd);
+void sendAT( char *msg, size_t sizetoSend );
 
 void GSM_task();
 

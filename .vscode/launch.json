@@ -56,7 +56,8 @@
             "openOCDLaunchCommands": ["adapter speed 4000"],
             "runToEntryPoint": "main",
             "svdFile": "${workspaceFolder}/.vscode/STM32F103xx.svd",
-            "rtos": "FreeRTOS"
+            "rtos": "FreeRTOS",
+            "preLaunchTask": "start"
         }
     ]
 }

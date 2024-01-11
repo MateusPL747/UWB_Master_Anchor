@@ -7,6 +7,7 @@ int ip_b;
 int ip_c;
 int ip_d;
 char * msgBuff;
+size_t totalMsgLen;
 
 extern ATmssg_t stateMachine; // Defined here but declared at file: ./custom-at.c
 extern mqt_t mqtt_handle;     // Defined here but declared at file ../../custom-mqtt.c
@@ -20,7 +21,7 @@ void set_ip_initial_state() {
     sprintf( stateMachine.command, "AT+CSTT=\"%s\",\"%s\",\"%s\"\r\n", stateMachine.apn_host, stateMachine.apn_user, stateMachine.apn_psw );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command );
+    sendAT( stateMachine.command, NULL );
 };
 
 void set_ip_start_state() {
@@ -31,7 +32,7 @@ void set_ip_start_state() {
     sprintf( stateMachine.command, "AT+CIICR\r\n" );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command );
+    sendAT( stateMachine.command, NULL );
 };
 
 void set_ip_gprsact_state() {
@@ -42,7 +43,7 @@ void set_ip_gprsact_state() {
     sprintf( stateMachine.command, "AT+CIFSR\r\n" );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command );
+    sendAT( stateMachine.command, NULL );
 };
 
 void set_ip_status_state() {
@@ -53,7 +54,7 @@ void set_ip_status_state() {
     sprintf( stateMachine.command, "AT+CIPSTART=\"TCP\",\"%s\",%d\r\n", stateMachine.mqtt_host, stateMachine.mqtt_port );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command );
+    sendAT( stateMachine.command, NULL );
 };
 
 void set_tcp_connecting_state() {
@@ -76,7 +77,7 @@ void set_error_state () {
     stateMachine.lastChangestateTime = HAL_GetTick();
 
     /* Sends a command as soon as it change state */
-    sendAT("AT+CFUN=1,1\r\n");
+    sendAT("AT+CFUN=1,1\r\n", NULL);
 
     sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
     setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
@@ -163,7 +164,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
                 stateMachine.lastChangestateTime = 0;
                 if ( is_error_count_out() ) is_error_count_out();
             } else if ( strncmp(stateMachine.incomingMsg, "\r\n+PDP: DEACT\r\n\r\nERROR\r\n", 9U) == 0 ) {
-                sendAT("AT+CIPSHUT\r\n");
+                sendAT("AT+CIPSHUT\r\n", NULL);
             }
             break;
         
@@ -265,9 +266,12 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
                 set_ip_status_state();
             
             if ( strncmp( stateMachine.incomingMsg, "\r\n>", 3U ) == 0 && mqtt_handle.availableToSend){
-                msgBuff = mqtt_handle.msgBuff; 
-                sendAT( msgBuff );
-                sendAT((char *)0x1A);
+                
+                memcpy( msgBuff, mqtt_handle.msgBuff, mqtt_handle.totalMsgLen );
+                msgBuff[ mqtt_handle.totalMsgLen ] = 0x1A;
+
+                sendAT( msgBuff, mqtt_handle.totalMsgLen );
+
                 mqtt_handle.availableToSend = 0;
             }
 
