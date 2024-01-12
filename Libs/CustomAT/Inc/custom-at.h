@@ -1,76 +1,3 @@
-/*
-States:
-TO_CONFG_APN
-    command: AT+CSTT="<apn>","<apn_usr>","<apn_pwd>"
-    
-    resume: OK
-    nextStep: TO_CONFG_GSM
-    
-    reject: ERROR
-    
-    
-    nextStep: reset_modemSW
-
-TO_CONFG_GSM
-    command: AT+CIICR
-
-    resume: OK
-    nextStep: TO_CONG_IP
-
-    reject: ERROR
-    nextStep: TO_CONFG_APN
-
-    timeout: 85000ms
-
-TO_CONG_IP
-    command: AT+AT+CIFSR
-
-    resume: OK
-    nextStep: TO_CONFG_TCP
-
-    reject: ERROR
-    nextStep: TO_CONFG_GSM
-
-
-TO_CONFG_TCP
-    command: AT+CIPSTART="TCP","<broker_add>",<port_number>
-
-    resume: OK
-    nextStep: IDLE
-
-    reject: ERROR
-    nextStep: TO_CONG_IP
-
-    timeout: 160000 ms
-
-TRASNMITING
-    command:
-        AT+CIPSEND
-        <HEX>
-
-    
-
-RESET_MODEM_SW
-    command: AT+CFUN=1,1
-
-    resume: OK
-    nextStep: TO_CONFG_APN
-
-    reject: +CME ERROR: <err>
-    nextStep: RESET_MODEM_HW
-
-    timeout: 10000ms
-
-RESET_MODEM_HW
-    command: 'Pulls down the power pin'
-
-IDLE_CONNECTED:
-    loop: healthCheck
-
-IDLE_DISCONNECTED:
-    loop: checkReady
-*/
-
 #ifndef CUSTOM_AT_H
 #define CUSTOM_AT_H
 
@@ -78,15 +5,17 @@ IDLE_DISCONNECTED:
 #include <stdint.h>
 #include <stdio.h>
 
-#define IDLE_DISCONNECTED   0x00
+#define IP_INITIAL          0x00
+#define IP_START            0x01
+#define IP_GPRSACT          0x02
+#define IP_STATUS           0x03
 
-#define IP_INITIAL          0x01
-#define IP_START            0x02
-#define IP_GPRSACT          0x03
-#define IP_STATUS           0x04
-#define TCP_CONNECTING      0x05
-#define CONNECT_OK          0x06
-#define TCP_CLOSED          0x07
+#define TCP_CONNECTING      0x04
+#define CONNECT_OK          0x05
+#define TCP_CLOSED          0x06
+#define WAITING_SIM         0x07
+#define IDLE_DISCONNECTED   0x08
+#define ERROR_STATE         0x09
 
 #define CIICR_TIMEOUT       85000UL
 #define CIPSTART_TIMEOUT    75000UL

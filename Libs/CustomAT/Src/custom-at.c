@@ -77,8 +77,11 @@ void GSM_task(){
         return;
 
     /* If already connected, stop sending automatic AT commands. Now, only the application should send them */
-    if ( stateMachine.state > TCP_CONNECTING )
+    if ( stateMachine.state > TCP_CONNECTING  )
         return;
+    
+    if (  )
+    else if ( stateMachine.state == WATING_SIM || stateMachine.state == ERROR_STATE )
 
     /* If doesn't reach this state timeout, don't send commands */
     if ( ( HAL_GetTick() - stateMachine.lastChangestateTime ) < stateMachine.timeout )

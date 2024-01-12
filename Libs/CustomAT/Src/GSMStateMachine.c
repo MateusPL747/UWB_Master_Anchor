@@ -12,6 +12,13 @@ size_t totalMsgLen;
 extern ATmssg_t stateMachine; // Defined here but declared at file: ./custom-at.c
 extern mqt_t mqtt_handle;     // Defined here but declared at file ../../custom-mqtt.c
 
+void set_wating_sim_state () {
+    setExpected((char *)"\r\nSMS Ready\r\n");
+    stateMachine.state = WATING_SIM;
+    stateMachine.timeout = STATE_TIMEOUT;
+    stateMachine.lastChangestateTime = HAL_GetTick();
+}
+
 void set_ip_initial_state() {
     sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
     setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
@@ -72,7 +79,7 @@ void set_connect_ok_state() {
 };
 
 void set_error_state () {
-    stateMachine.state = IDLE_DISCONNECTED;
+    stateMachine.state = WATING_SIM;
     stateMachine.timeout = STATE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
 
@@ -81,6 +88,29 @@ void set_error_state () {
 
     sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
     setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
+}
+
+void passive_states_handdler () {
+    switch  ( stateMachine.state )
+    {
+        case ERROR_STATE:
+            break;
+        
+        case WAITING_SIM:
+            break;
+
+        case IDLE_DISCONNECTED:
+            break;
+
+        case TCP_CONNECTING:
+            break;
+
+        case CONNECT_OK:
+            break;
+
+        case TCP_CLOSED:
+            break;
+    }
 }
 
 int is_error_count_out () {
@@ -151,6 +181,9 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
         switch (stateMachine.state)
         {
 
+        case WAITING_SIM:
+            if ( strncmp( stateMachine.incomingMsg, "" ) )
+
         case IDLE_DISCONNECTED:
             if ( strncmp(stateMachine.incomingMsg, stateMachine.resume_msg, 11U) == 0 )
             {
@@ -163,6 +196,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
                 if ( is_error_count_out() ) is_error_count_out();
+                
             } else if ( strncmp(stateMachine.incomingMsg, "\r\n+PDP: DEACT\r\n\r\nERROR\r\n", 9U) == 0 ) {
                 sendAT("AT+CIPSHUT\r\n", NULL);
             }
@@ -279,7 +313,10 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
         
         case TCP_CLOSED:
             // Do something -\_('-')_/-
+            break;
 
+        case ERROR_STATE:
+            // Do something -\_('-')_/-
             break;
 
         default:
