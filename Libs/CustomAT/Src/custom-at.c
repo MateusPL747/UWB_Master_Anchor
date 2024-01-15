@@ -16,7 +16,6 @@ void setRejectExcepcted(char *newReject)
 }
 
 void AT_usart_init_config(
-
     UART_HandleTypeDef *huart,
     char *apn_host,
     char *apn_user,
@@ -26,13 +25,6 @@ void AT_usart_init_config(
     char * mqtt_psw,
     int mqtt_port)
 {
-    stateMachine.state = IDLE_DISCONNECTED;
-    setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
-    setRejectExcepcted((char *)"\r\nERROR\r\n");
-    sprintf( stateMachine.command, "AT\r\nWAIT=1\r\nAT+CIPSTATUS\r\n" );
-
-    stateMachine.lastChangestateTime = HAL_GetTick();
-    stateMachine.timeout = 5 * STATE_TIMEOUT;
 
     stateMachine.huartAT = huart;
 
@@ -47,10 +39,11 @@ void AT_usart_init_config(
     stateMachine.interruptFlag = 0;
     stateMachine.clearAllFlag = 0;
 
-    // Disable the at command echo back and restart the moden
+    // Disable the at command echo back and restart the moden. Then directly change the state to WAITIN_SIM
     HAL_UART_Transmit_IT(stateMachine.huartAT, (unsigned char *)"ATE0&W\r\nAT+CFUN=1,1\r\n", 21);
+    set_waiting_sim_state();
 
-    // Start receiving UART data from modem
+    // Start listening for modem UART
     HAL_UARTEx_ReceiveToIdle_IT(
         stateMachine.huartAT,
         (unsigned char *) stateMachine.incomingMsg,
@@ -67,7 +60,8 @@ void sendAT(char *msg, size_t sizetoSend )
     }
 }
 
-void GSM_task(){
+void GSM_task()
+{
 
     resolveUARTCtrl( stateMachine.huartAT );
     clearUARTCtrl( stateMachine.huartAT );
@@ -80,8 +74,16 @@ void GSM_task(){
     if ( stateMachine.state > TCP_CONNECTING  )
         return;
     
-    if (  )
-    else if ( stateMachine.state == WATING_SIM || stateMachine.state == ERROR_STATE )
+    /* If it is in TCP_CLOSED state, direct change to IP_STATUS */
+    if ( stateMachine.state == TCP_CLOSED )
+        set_ip_status_state();
+    
+    /* If it is in ERROR_STATE state */
+    else if ( stateMachine.state == ERROR_STATE )
+    {
+        HAL_UART_Transmit_IT(stateMachine.huartAT, (unsigned char *)"ATE0&W\r\nAT+CFUN=1,1\r\n", 21);
+        set_waiting_sim_state();
+    }
 
     /* If doesn't reach this state timeout, don't send commands */
     if ( ( HAL_GetTick() - stateMachine.lastChangestateTime ) < stateMachine.timeout )

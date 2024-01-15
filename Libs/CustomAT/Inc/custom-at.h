@@ -5,16 +5,16 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define IP_INITIAL          0x00
-#define IP_START            0x01
-#define IP_GPRSACT          0x02
-#define IP_STATUS           0x03
+#define WAITING_SIM         0x00
+#define IDLE_DISCONNECTED   0x01
+#define IP_INITIAL          0x02
+#define IP_START            0x03
+#define IP_GPRSACT          0x04
+#define IP_STATUS           0x05
 
-#define TCP_CONNECTING      0x04
-#define CONNECT_OK          0x05
-#define TCP_CLOSED          0x06
-#define WAITING_SIM         0x07
-#define IDLE_DISCONNECTED   0x08
+#define TCP_CONNECTING      0x06
+#define CONNECT_OK          0x07
+#define TCP_CLOSED          0x08
 #define ERROR_STATE         0x09
 
 #define CIICR_TIMEOUT       85000UL

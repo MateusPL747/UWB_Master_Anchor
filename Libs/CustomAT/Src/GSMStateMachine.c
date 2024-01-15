@@ -12,16 +12,24 @@ size_t totalMsgLen;
 extern ATmssg_t stateMachine; // Defined here but declared at file: ./custom-at.c
 extern mqt_t mqtt_handle;     // Defined here but declared at file ../../custom-mqtt.c
 
-void set_wating_sim_state () {
-    setExpected((char *)"\r\nSMS Ready\r\n");
-    stateMachine.state = WATING_SIM;
+void set_waiting_sim_state () {
+    sprintf( stateMachine.command, "AT\r\n" );
+    setExpected ((char *)"\r\nSMS Ready\r\n");
+    stateMachine.state = WAITING_SIM;
+    stateMachine.timeout = STATE_TIMEOUT;
+    stateMachine.lastChangestateTime = HAL_GetTick();
+}
+
+void set_idle_disconnected () {
+    sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
+    setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
+    stateMachine.state = IDLE_DISCONNECTED;
     stateMachine.timeout = STATE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
 }
 
 void set_ip_initial_state() {
-    sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
-    setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
+    setExpected((char *)"\r\nOK\r\n");
     stateMachine.state = IP_INITIAL;
     stateMachine.timeout = STATE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
@@ -79,38 +87,9 @@ void set_connect_ok_state() {
 };
 
 void set_error_state () {
-    stateMachine.state = WATING_SIM;
+    stateMachine.state = ERROR_STATE;
     stateMachine.timeout = STATE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
-
-    /* Sends a command as soon as it change state */
-    sendAT("AT+CFUN=1,1\r\n", NULL);
-
-    sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
-    setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
-}
-
-void passive_states_handdler () {
-    switch  ( stateMachine.state )
-    {
-        case ERROR_STATE:
-            break;
-        
-        case WAITING_SIM:
-            break;
-
-        case IDLE_DISCONNECTED:
-            break;
-
-        case TCP_CONNECTING:
-            break;
-
-        case CONNECT_OK:
-            break;
-
-        case TCP_CLOSED:
-            break;
-    }
 }
 
 int is_error_count_out () {
@@ -148,14 +127,22 @@ void clearUARTCtrl ( UART_HandleTypeDef *huart ) {
     }
 }
 
-void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
+/**
+ * @brief Fucntion to act according to the received UART message. It handdles the GSM message frame validation and
+ *        state changes. It is controlled by the stateMachine.interruptFlag message flag. If this variable is set
+ *        by the UART ISR, then resolve this function resolves the state changes and unset the interruptFlag again.
+ *        Check the following link for the state machine information:
+ *        https://www.figma.com/file/mak4llwORDq15pVzqMm7mB/UWB-Ideas?type=whiteboard&node-id=0%3A1&t=Hj7Z12aJQdf3mpsE-1
+ * 
+ * @param huart 
+ */
+void resolveUARTCtrl ( UART_HandleTypeDef *huart )
+{
 
     if ( stateMachine.interruptFlag ) {
-        stateMachine.interruptFlag = 0;
 
         // Checks if this callback is raised by the GSM serial
         if ( huart != stateMachine.huartAT ) {
-            // memset( stateMachine.incomingMsg, '\0', sizeof(stateMachine.incomingMsg) );
             HAL_UARTEx_ReceiveToIdle_IT(
                 stateMachine.huartAT,
                 (unsigned char *) stateMachine.incomingMsg,
@@ -164,9 +151,8 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
             return;
         }
             
-        //  Checks if message starts with \n (initial message mark)
-        if ( stateMachine.incomingMsg[0] != '\r'  ) {
-            // memset( stateMachine.incomingMsg, '\0', sizeof(stateMachine.incomingMsg) );
+        //  Checks if message starts with \r\n (initial GSM response message mark)
+        if ( stateMachine.incomingMsg[0] != '\r' && stateMachine.incomingMsg[1] != '\n'  ) {
             HAL_UARTEx_ReceiveToIdle_IT(
                 stateMachine.huartAT,
                 (unsigned char *) stateMachine.incomingMsg,
@@ -175,14 +161,16 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
             return;
         }
 
-        // =================================================================================
-
-        // If success, check 
+        /* ============================== STATE CONTROL BLOCK ============================== */
         switch (stateMachine.state)
         {
 
         case WAITING_SIM:
-            if ( strncmp( stateMachine.incomingMsg, "" ) )
+            if ( strncmp( stateMachine.incomingMsg, stateMachine.resume_msg, 11U ) == 0 )
+            {
+                stateMachine.error_count = 0;
+                set_idle_disconnected();
+            }
 
         case IDLE_DISCONNECTED:
             if ( strncmp(stateMachine.incomingMsg, stateMachine.resume_msg, 11U) == 0 )
@@ -235,7 +223,6 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
             break;
 
         case IP_GPRSACT:
-
             if ( sscanf(stateMachine.incomingMsg, "\n%u.%u.%u.%u", &ip_a, &ip_b, &ip_c, &ip_d) == 4 )
             {
                 /* Reset error count */
@@ -310,25 +297,21 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart ) {
             }
 
             break;
-        
-        case TCP_CLOSED:
-            // Do something -\_('-')_/-
-            break;
-
-        case ERROR_STATE:
-            // Do something -\_('-')_/-
-            break;
 
         default:
             break;
         }
-        
-        // memset( stateMachine.incomingMsg, '\0', sizeof(stateMachine.incomingMsg) );
+
+
+        /* Restart the Rx interrupt routine */
         HAL_UARTEx_ReceiveToIdle_IT(
             stateMachine.huartAT,
             (unsigned char *) stateMachine.incomingMsg,
             sizeof( stateMachine.incomingMsg )
         );
+
+        /* Unset the UART Rx interrupt flag */
+        stateMachine.interruptFlag = 0;
 
     }
 }
