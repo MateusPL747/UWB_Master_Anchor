@@ -8,6 +8,7 @@
 
 extern ATmssg_t stateMachine; // Defined here but declared at file: ./main.c
 extern mqt_t mqtt_handle;
+int32_t timeControl = 0;
 
 int encode_variable_length_integer(int value, unsigned char *encoded_bytes, int *num_bytes) {
     // Check if the value is negative
@@ -158,16 +159,12 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
         memcpy( &buff[14 + IDlen + sizeof(userLen) + userOffset], &passwordLen, sizeof( passwordLen ) );
         memcpy( &buff[14 + IDlen + sizeof(userLen) + userOffset + sizeof(passwordLen) ], Password, strlen( Password ) );
     }
-    
+
     memcpy( mqtt_handle.msgBuff, buff, totalMsgLen );
     mqtt_handle.totalMsgLen = totalMsgLen;
-    sendAT( "AT+CIPSEND\r\n", NULL );
-
+    mqtt_handle.msgBuff[totalMsgLen] = '\r';
+    mqtt_handle.msgBuff[totalMsgLen + 1] = '\n';
     mqtt_handle.availableToSend = 1;
-
-    for ( int i = 0; i < totalMsgLen; i++ ) {
-        printf( "%02X ", buff[i] );
-    }
 
     memset( buff, 0, totalMsgLen );
     free( buff );
@@ -219,6 +216,7 @@ void mqtt_init (
     char * mqtt_id
 ) {
     mqtt_handle.availableToSend = 0;
+    mqtt_handle.frequency = 1000L;
 
     mqtt_handle.user = mqtt_user;
     mqtt_handle.psw = mqtt_psw;
@@ -227,8 +225,14 @@ void mqtt_init (
 
 void mqtt_task () {
 
-    //  Handle connection and re-connection
-    if ( stateMachine.state == CONNECT_OK || mqtt_handle.availableToSend ) {
-        // createMqttConnection ();
+    if ( HAL_GetTick() - timeControl > mqtt_handle.frequency )
+    {
+        //  Handle connection and re-connection
+        if ( stateMachine.state == CONNECT_OK && mqtt_handle.availableToSend )
+        {
+            sendAT( "AT+CIPSEND\r\n", 12U );
+            timeControl = HAL_GetTick();
+        }
     }
+
 }

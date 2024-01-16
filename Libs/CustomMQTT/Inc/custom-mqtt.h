@@ -16,4 +16,6 @@ typedef struct {
     char * id;
     char * user;
     char * psw;
+    int32_t frequency;
+
 } mqt_t;

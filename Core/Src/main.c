@@ -131,7 +131,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     GSM_task();
-    // MQTT_Task();
+    mqtt_task();
 
     HAL_GPIO_TogglePin( LED_2_GPIO_Port, LED_2_Pin );
     HAL_Delay( 1 );

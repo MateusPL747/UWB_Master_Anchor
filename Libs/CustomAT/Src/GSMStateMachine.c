@@ -83,6 +83,7 @@ void set_connect_ok_state() {
     stateMachine.timeout = INFINITE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
 
+    /* Here, the mqtt connect packet will be created and the mqtt_handle.availableToSend will be set to 1 for the first time */
     createMqttConnection( mqtt_handle.id, mqtt_handle.user, mqtt_handle.psw );
 };
 
@@ -159,6 +160,26 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
                 sizeof( stateMachine.incomingMsg )
             );
             return;
+        }
+
+        //  Check if it is a SIM800L request for MCU input ">"
+        if ( strncmp( stateMachine.incomingMsg, (const char *)"\r\n>", 3U ) == 0 ) {
+
+            if ( mqtt_handle.availableToSend )
+            {
+                /* Send the command waiting on the mqtt_handle.msgBuff */
+                sendAT( mqtt_handle.msgBuff, mqtt_handle.totalMsgLen + 2 );
+                /* Unflag the message ready flag */
+                mqtt_handle.availableToSend = 0;
+
+                /* Restart the RX receive */
+                HAL_UARTEx_ReceiveToIdle_IT(
+                    stateMachine.huartAT,
+                    (unsigned char *) stateMachine.incomingMsg,
+                    sizeof( stateMachine.incomingMsg )
+                );
+                return;
+            }
         }
 
         /* ============================== STATE CONTROL BLOCK ============================== */
@@ -286,15 +307,16 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             if ( strncmp( stateMachine.incomingMsg, "\r\nCLOSED", 7U ) == 0 )
                 set_ip_status_state();
             
-            if ( strncmp( stateMachine.incomingMsg, "\r\n>", 3U ) == 0 && mqtt_handle.availableToSend){
+            // if ( strncmp( stateMachine.incomingMsg, "\r\n>", 3U ) == 0 && mqtt_handle.availableToSend){
                 
-                memcpy( msgBuff, mqtt_handle.msgBuff, mqtt_handle.totalMsgLen );
-                msgBuff[ mqtt_handle.totalMsgLen ] = 0x1A;
+            //     memcpy( msgBuff, mqtt_handle.msgBuff, mqtt_handle.totalMsgLen );
+            //     msgBuff[ mqtt_handle.totalMsgLen ] = 0x1A;
 
-                sendAT( msgBuff, mqtt_handle.totalMsgLen );
+            //     sendAT(  )
+            //     sendAT( msgBuff, mqtt_handle.totalMsgLen );
 
-                mqtt_handle.availableToSend = 0;
-            }
+            //     mqtt_handle.availableToSend = 0;
+            // }
 
             break;
 
