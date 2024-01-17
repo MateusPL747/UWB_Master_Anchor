@@ -12,7 +12,8 @@ size_t totalMsgLen;
 extern ATmssg_t stateMachine; // Defined here but declared at file: ./custom-at.c
 extern mqt_t mqtt_handle;     // Defined here but declared at file ../../custom-mqtt.c
 
-void set_waiting_sim_state () {
+void set_waiting_sim_state ()
+{
     sprintf( stateMachine.command, "AT\r\n" );
     setExpected ((char *)"\r\nSMS Ready\r\n");
     stateMachine.state = WAITING_SIM;
@@ -20,7 +21,8 @@ void set_waiting_sim_state () {
     stateMachine.lastChangestateTime = HAL_GetTick();
 }
 
-void set_idle_disconnected () {
+void set_idle_disconnected ()
+{
     sprintf( stateMachine.command, "AT+CIPSTATUS\r\n" );
     setExpected((char *)"\r\nOK\r\n\r\nSTATE: IP INITIAL\r\n");
     stateMachine.state = IDLE_DISCONNECTED;
@@ -28,7 +30,8 @@ void set_idle_disconnected () {
     stateMachine.lastChangestateTime = HAL_GetTick();
 }
 
-void set_ip_initial_state() {
+void set_ip_initial_state ()
+{
     setExpected((char *)"\r\nOK\r\n");
     stateMachine.state = IP_INITIAL;
     stateMachine.timeout = STATE_TIMEOUT;
@@ -36,10 +39,11 @@ void set_ip_initial_state() {
     sprintf( stateMachine.command, "AT+CSTT=\"%s\",\"%s\",\"%s\"\r\n", stateMachine.apn_host, stateMachine.apn_user, stateMachine.apn_psw );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command, NULL );
+    sendAT( stateMachine.command, (size_t)NULL );
 };
 
-void set_ip_start_state() {
+void set_ip_start_state ()
+{
     setExpected((char *)"\r\nOK\r\n");
     stateMachine.state = IP_START;
     stateMachine.timeout = CIICR_TIMEOUT;
@@ -47,10 +51,11 @@ void set_ip_start_state() {
     sprintf( stateMachine.command, "AT+CIICR\r\n" );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command, NULL );
+    sendAT( stateMachine.command, (size_t)NULL );
 };
 
-void set_ip_gprsact_state() {
+void set_ip_gprsact_state ()
+{
     setExpected((char *)"\r\nOK\r\n");
     stateMachine.state = IP_GPRSACT;
     stateMachine.timeout = STATE_TIMEOUT;
@@ -58,10 +63,11 @@ void set_ip_gprsact_state() {
     sprintf( stateMachine.command, "AT+CIFSR\r\n" );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command, NULL );
+    sendAT( stateMachine.command, (size_t)NULL );
 };
 
-void set_ip_status_state() {
+void set_ip_status_state ()
+{
     setExpected((char *)"\r\nOK\r\n");
     stateMachine.state = IP_STATUS;
     stateMachine.timeout = STATE_TIMEOUT;
@@ -69,16 +75,18 @@ void set_ip_status_state() {
     sprintf( stateMachine.command, "AT+CIPSTART=\"TCP\",\"%s\",%d\r\n", stateMachine.mqtt_host, stateMachine.mqtt_port );
 
     /* Sends a command as soon as it change state */
-    sendAT( stateMachine.command, NULL );
+    sendAT( stateMachine.command, (size_t)NULL );
 };
 
-void set_tcp_connecting_state() {
+void set_tcp_connecting_state ()
+{
     stateMachine.state = TCP_CONNECTING;
     stateMachine.timeout = INFINITE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
 };
 
-void set_connect_ok_state() {
+void set_connect_ok_state ()
+{
     stateMachine.state = CONNECT_OK;
     stateMachine.timeout = INFINITE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
@@ -87,17 +95,28 @@ void set_connect_ok_state() {
     createMqttConnection( mqtt_handle.id, mqtt_handle.user, mqtt_handle.psw );
 };
 
-void set_error_state () {
+void set_error_state ()
+{
     stateMachine.state = ERROR_STATE;
     stateMachine.timeout = STATE_TIMEOUT;
     stateMachine.lastChangestateTime = HAL_GetTick();
 }
 
-int is_error_count_out () {
-    if ( stateMachine.error_count >= ERR_COUNT_OUT ) {
+int is_error_count_out ( int value )
+{
+    if ( value != (int)NULL ) {
+        if ( stateMachine.error_count >= value ) {
 
-        stateMachine.error_count = 0;
-        return 1;
+            stateMachine.error_count = 0;
+            return 1;
+        }
+    } else
+    {
+        if ( stateMachine.error_count >= ERR_COUNT_OUT_STD ) {
+
+            stateMachine.error_count = 0;
+            return 1;
+        }
     }
 
     return 0;
@@ -168,7 +187,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             if ( mqtt_handle.availableToSend )
             {
                 /* Send the command waiting on the mqtt_handle.msgBuff */
-                sendAT( mqtt_handle.msgBuff, mqtt_handle.totalMsgLen + 2 );
+                sendAT( mqtt_handle.msgBuff, mqtt_handle.totalMsgLen + 3 );
                 /* Unflag the message ready flag */
                 mqtt_handle.availableToSend = 0;
 
@@ -192,6 +211,12 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
                 stateMachine.error_count = 0;
                 set_idle_disconnected();
             }
+            else if ( strncmp( stateMachine.incomingMsg, ( const char * )"\r\nOK", 4) == 0 )
+            {
+                stateMachine.error_count++;
+                if ( is_error_count_out( ERR_COUNT_OUT_WAITING_SIM ) ) set_error_state();
+            }
+            break;
 
         case IDLE_DISCONNECTED:
             if ( strncmp(stateMachine.incomingMsg, stateMachine.resume_msg, 11U) == 0 )
@@ -204,10 +229,10 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             {
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
-                if ( is_error_count_out() ) is_error_count_out();
+                if ( is_error_count_out((int)NULL)  ) set_error_state();
                 
             } else if ( strncmp(stateMachine.incomingMsg, "\r\n+PDP: DEACT\r\n\r\nERROR\r\n", 9U) == 0 ) {
-                sendAT("AT+CIPSHUT\r\n", NULL);
+                sendAT("AT+CIPSHUT\r\n", (size_t)NULL);
             }
             break;
         
@@ -222,7 +247,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             {
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
-                if ( is_error_count_out() ) set_error_state();
+                if ( is_error_count_out((int)NULL)  ) set_error_state();
             }
 
             break;
@@ -238,7 +263,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             {
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
-                if ( is_error_count_out() ) set_error_state();
+                if ( is_error_count_out((int)NULL)  ) set_error_state();
             }
 
             break;
@@ -254,7 +279,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             {
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
-                if ( is_error_count_out() )
+                if ( is_error_count_out((int)NULL)  )
                     set_error_state();
                 else
                     set_ip_start_state();
@@ -273,7 +298,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             {
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
-                if ( is_error_count_out() )
+                if ( is_error_count_out((int)NULL)  )
                     set_error_state();
                 else
                     set_ip_gprsact_state();
@@ -295,7 +320,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             ){
                 stateMachine.error_count++;
                 stateMachine.lastChangestateTime = 0;
-                if ( is_error_count_out() )
+                if ( is_error_count_out((int)NULL)  )
                     set_error_state();
                 else
                     set_ip_status_state();
@@ -304,19 +329,8 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             break;
 
         case CONNECT_OK:
-            if ( strncmp( stateMachine.incomingMsg, "\r\nCLOSED", 7U ) == 0 )
+            if ( strncmp( stateMachine.incomingMsg, "\r\nERROR\r\n\r\nCLOSED", 7U ) == 0 )
                 set_ip_status_state();
-            
-            // if ( strncmp( stateMachine.incomingMsg, "\r\n>", 3U ) == 0 && mqtt_handle.availableToSend){
-                
-            //     memcpy( msgBuff, mqtt_handle.msgBuff, mqtt_handle.totalMsgLen );
-            //     msgBuff[ mqtt_handle.totalMsgLen ] = 0x1A;
-
-            //     sendAT(  )
-            //     sendAT( msgBuff, mqtt_handle.totalMsgLen );
-
-            //     mqtt_handle.availableToSend = 0;
-            // }
 
             break;
 

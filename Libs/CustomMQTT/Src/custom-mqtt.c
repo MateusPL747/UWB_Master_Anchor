@@ -72,13 +72,15 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
     int16_t userOffset = 0;
     int16_t passwordLen = 0;
 
-    if ( User != NULL ) {
+    if ( User != NULL )
+    {
         userLen = strlen( User );
         userOffset = userLen;
         userLen = (userLen << 8) | ((userLen >> 8) & 0xFF); //reverse endianess
     }
 
-    if ( User != NULL ) {
+    if ( User != NULL )
+    {
         passwordLen = strlen( Password );
         passwordLen = (passwordLen << 8) | ((passwordLen >> 8) & 0xFF); //reverse endianess
     }
@@ -150,12 +152,14 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
     memcpy( &buff[12], &clientIDLen, sizeof( clientIDLen ) );
     memcpy( &buff[14], clientID, strlen( clientID ) );
     
-    if ( User != NULL ) {
+    if ( User != NULL )
+    {
         memcpy( &buff[14 + IDlen ], &userLen, sizeof( userLen ) );
         memcpy( &buff[14 + IDlen + sizeof(userLen)], User, strlen( User ) );
     }
 
-    if ( Password != NULL ) {
+    if ( Password != NULL )
+    {
         memcpy( &buff[14 + IDlen + sizeof(userLen) + userOffset], &passwordLen, sizeof( passwordLen ) );
         memcpy( &buff[14 + IDlen + sizeof(userLen) + userOffset + sizeof(passwordLen) ], Password, strlen( Password ) );
     }
@@ -164,15 +168,15 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
     mqtt_handle.totalMsgLen = totalMsgLen;
     mqtt_handle.msgBuff[totalMsgLen] = '\r';
     mqtt_handle.msgBuff[totalMsgLen + 1] = '\n';
+    mqtt_handle.msgBuff[totalMsgLen + 2] = 0x1A;
     mqtt_handle.availableToSend = 1;
 
-    memset( buff, 0, totalMsgLen );
     free( buff );
 
     return 1;
 }
 
-void sendMQTTpayload ( char * topic, char * payload ) {
+int sendMQTTpayload ( char * topic, char * payload ) {
     
     int8_t HeaderFlag = 0x30; //    Standard value
     int16_t topicL = strlen( topic );
@@ -191,7 +195,7 @@ void sendMQTTpayload ( char * topic, char * payload ) {
     
     int16_t totalSize = sizeof( HeaderFlag ) + sizeof( msgLen ) + sizeof(topicLen) + (int)strlen(topic) + (int)strlen(payload);
     char * ptr = (char*)malloc( totalSize );
-    if ( ptr == NULL ) return;
+    if ( ptr == NULL ) return 0;
     
     ptr[0] = HeaderFlag;
     memcpy( &ptr[1], &encoded_msg, msg_byte_num );
@@ -200,13 +204,16 @@ void sendMQTTpayload ( char * topic, char * payload ) {
     memcpy( &ptr[4 + msg_byte_num - 1], topic, strlen(topic) );
     memcpy( &ptr[4 + msg_byte_num - 1 + topicL], payload, strlen(payload) );
 
-    char * target;
-    MemoryToString( ptr, totalSize, &target );
-    free( target );
+    memcpy( mqtt_handle.msgBuff, ptr, totalSize );
+    mqtt_handle.totalMsgLen = totalSize;
+    mqtt_handle.msgBuff[totalSize] = '\r';
+    mqtt_handle.msgBuff[totalSize + 1] = '\n';
+    mqtt_handle.msgBuff[totalSize + 2] = 0x1A;
+    mqtt_handle.availableToSend = 1;
 
-    memset( ptr, 0, totalSize );
     free( ptr );
 
+    return 1;
 
 }
 
