@@ -166,9 +166,7 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
 
     memcpy( mqtt_handle.msgBuff, buff, totalMsgLen );
     mqtt_handle.totalMsgLen = totalMsgLen;
-    mqtt_handle.msgBuff[totalMsgLen] = '\r';
-    mqtt_handle.msgBuff[totalMsgLen + 1] = '\n';
-    mqtt_handle.msgBuff[totalMsgLen + 2] = 0x1A;
+    mqtt_handle.msgBuff[totalMsgLen] = 0x1A;
     mqtt_handle.availableToSend = 1;
 
     free( buff );
@@ -206,9 +204,7 @@ int sendMQTTpayload ( char * topic, char * payload ) {
 
     memcpy( mqtt_handle.msgBuff, ptr, totalSize );
     mqtt_handle.totalMsgLen = totalSize;
-    mqtt_handle.msgBuff[totalSize] = '\r';
-    mqtt_handle.msgBuff[totalSize + 1] = '\n';
-    mqtt_handle.msgBuff[totalSize + 2] = 0x1A;
+    mqtt_handle.msgBuff[totalSize] = 0x1A;
     mqtt_handle.availableToSend = 1;
 
     free( ptr );

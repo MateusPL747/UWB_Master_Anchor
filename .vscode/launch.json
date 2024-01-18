@@ -58,6 +58,28 @@
             "svdFile": "${workspaceFolder}/.vscode/STM32F103xx.svd",
             "rtos": "FreeRTOS",
             "preLaunchTask": "start"
+        },
+        {
+            "name": "No-comp Cortex",
+            "cwd": "${workspaceFolder}",
+            "executable": "${workspaceFolder}/build/BU01_STATION.elf",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "interface":"swd",
+            "device": "STM32F103C8",
+            "configFiles": [
+            "interface/stlink-v2.cfg",
+            "target/stm32f1x.cfg",
+            ],
+            "liveWatch": {
+                "enabled": true,
+                "samplesPerSecond": 5
+            },
+            "openOCDLaunchCommands": ["adapter speed 4000"],
+            "runToEntryPoint": "main",
+            "svdFile": "${workspaceFolder}/.vscode/STM32F103xx.svd",
+            "rtos": "FreeRTOS"
         }
     ]
 }

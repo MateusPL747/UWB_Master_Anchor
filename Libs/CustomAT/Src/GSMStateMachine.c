@@ -336,6 +336,14 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
                 mqtt_handle.connected = 0;
             }
 
+            if ( strncmp( stateMachine.incomingMsg, "\r\nERROR", 7U ) == 0 )
+            {
+                if ( is_error_count_out((int)NULL)  )
+                    set_error_state();
+                else
+                    set_ip_status_state();
+            }
+
             if ( strncmp( stateMachine.incomingMsg, "\r\nSEND OK", 9U ) == 0 )
             {
                 mqtt_handle.connected = 1;
