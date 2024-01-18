@@ -228,6 +228,7 @@ void mqtt_init (
     mqtt_handle.user = mqtt_user;
     mqtt_handle.psw = mqtt_psw;
     mqtt_handle.id = mqtt_id;
+    mqtt_handle.connected = 0;
 }
 
 void mqtt_task () {
@@ -239,6 +240,17 @@ void mqtt_task () {
         {
             sendAT( "AT+CIPSEND\r\n", 12U );
             timeControl = HAL_GetTick();
+        }
+
+        if ( mqtt_handle.connected == 1 )
+        {
+            if ( HAL_GetTick() - timeControl > 3000 )
+            {
+                // char * dados = "{\"result\":[\"repeat(1,2)\",{\"status\":\"enum(active,disabled)\",\"name\":{\"first\":\"firstName()\",\"middle\":\"middleName()\",\"last\":\"lastName()\"},\"username\":\"this.name.first-this.name.last\",\"password\":\"password()\",\"emails\":[\"repeat(2)\",\"email(gmail.com,example.com)\"],\"phoneNumber\":\"phoneNumber()\",\"location\":{\"street\":\"street()\",\"city\":\"city()\",\"state\":\"state()\",\"country\":\"country()\",\"zip\":\"zipCode()\",\"coordinates\":{\"latitude\":\"latitude()\",\"longitude\":\"longitude()\"}},\"website\":\"url()\",\"domain\":\"domainName()\",\"job\":{\"title\":\"jobTitle()\",\"descriptor\":\"jobDescriptor()\",\"area\":\"jobArea()\",\"type\":\"jobType()\",\"company\":\"companyName()\"},\"creditCard\":{\"number\":\"creditCardNumber()\",\"cvv\":\"creditCardCVV()\",\"issuer\":\"creditCardIssuer()\"},\"uuid\":\"guid()\",\"objectId\":\"objectId()\"}]}";
+                char * dados = "teste vai pfv";
+                sendMQTTpayload((char *)"UWB_test/teste1", dados);
+                timeControl = HAL_GetTick();
+            }
         }
     }
 

@@ -170,7 +170,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             );
             return;
         }
-            
+
         //  Checks if message starts with \r\n (initial GSM response message mark)
         if ( stateMachine.incomingMsg[0] != '\r' && stateMachine.incomingMsg[1] != '\n'  ) {
             HAL_UARTEx_ReceiveToIdle_IT(
@@ -182,7 +182,8 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
         }
 
         //  Check if it is a SIM800L request for MCU input ">"
-        if ( strncmp( stateMachine.incomingMsg, (const char *)"\r\n>", 3U ) == 0 ) {
+        if ( strncmp( stateMachine.incomingMsg, (const char *)"\r\n>", 3U ) == 0 )
+        {
 
             if ( mqtt_handle.availableToSend )
             {
@@ -329,8 +330,16 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             break;
 
         case CONNECT_OK:
-            if ( strncmp( stateMachine.incomingMsg, "\r\nERROR\r\n\r\nCLOSED", 7U ) == 0 )
+            if ( strncmp( stateMachine.incomingMsg, "\r\nERROR\r\n\r\nCLOSED", 17U ) == 0 )
+            {
                 set_ip_status_state();
+                mqtt_handle.connected = 0;
+            }
+
+            if ( strncmp( stateMachine.incomingMsg, "\r\nSEND OK", 9U ) == 0 )
+            {
+                mqtt_handle.connected = 1;
+            }
 
             break;
 
