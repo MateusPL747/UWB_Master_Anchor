@@ -26,6 +26,15 @@
             ]
         },
         {
+            "label": "JErase",
+            "type": "shell",
+            "group": "build",
+            "command": "st-flash",
+            "args": [
+                "erase"
+            ]
+        },
+        {
             "label": "JFlash",
             "type": "shell",
             "group": "build",
