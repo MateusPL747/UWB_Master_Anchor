@@ -188,7 +188,7 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
             if ( mqtt_handle.availableToSend )
             {
                 /* Send the command waiting on the mqtt_handle.msgBuff */
-                sendAT( mqtt_handle.msgBuff, mqtt_handle.totalMsgLen + 3 );
+                sendAT( mqtt_handle.msgBuff, mqtt_handle.totalMsgLen );
                 /* Unflag the message ready flag */
                 mqtt_handle.availableToSend = 0;
 
@@ -332,8 +332,8 @@ void resolveUARTCtrl ( UART_HandleTypeDef *huart )
         case CONNECT_OK:
             if ( strncmp( stateMachine.incomingMsg, "\r\nERROR\r\n\r\nCLOSED", 17U ) == 0 )
             {
-                set_ip_status_state();
                 mqtt_handle.connected = 0;
+                set_ip_status_state();
             }
 
             if ( strncmp( stateMachine.incomingMsg, "\r\nERROR", 7U ) == 0 )

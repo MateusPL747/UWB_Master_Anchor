@@ -134,7 +134,7 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
             
     }
     
-    int8_t totalMsgLen = (int8_t)( sizeof( HeaderFlag ) + (msgLen + 1) );
+    int8_t totalMsgLen = (int8_t)( sizeof( HeaderFlag ) + (msgLen) + 2 );
     
     char * buff = (char*)malloc(totalMsgLen);
     if ( buff == NULL ) {
@@ -165,8 +165,12 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
     }
 
     memcpy( mqtt_handle.msgBuff, buff, totalMsgLen );
+
+    mqtt_handle.msgBuff[totalMsgLen - 1] = 0x1A;
+    mqtt_handle.msgBuff[totalMsgLen + 1] = '\r';
+    mqtt_handle.msgBuff[totalMsgLen + 2] = '\n';
     mqtt_handle.totalMsgLen = totalMsgLen;
-    mqtt_handle.msgBuff[totalMsgLen] = 0x1A;
+
     mqtt_handle.availableToSend = 1;
 
     free( buff );
@@ -203,8 +207,10 @@ int sendMQTTpayload ( char * topic, char * payload ) {
     memcpy( &ptr[4 + msg_byte_num - 1 + topicL], payload, strlen(payload) );
 
     memcpy( mqtt_handle.msgBuff, ptr, totalSize );
-    mqtt_handle.totalMsgLen = totalSize;
-    mqtt_handle.msgBuff[totalSize] = 0x1A;
+
+    mqtt_handle.msgBuff[totalSize - 1] = 0x1A;
+    mqtt_handle.totalMsgLen = totalSize ;
+
     mqtt_handle.availableToSend = 1;
 
     free( ptr );
@@ -242,8 +248,8 @@ void mqtt_task () {
         {
             if ( HAL_GetTick() - timeControl > 3000 )
             {
-                // char * dados = "{\"result\":[\"repeat(1,2)\",{\"status\":\"enum(active,disabled)\",\"name\":{\"first\":\"firstName()\",\"middle\":\"middleName()\",\"last\":\"lastName()\"},\"username\":\"this.name.first-this.name.last\",\"password\":\"password()\",\"emails\":[\"repeat(2)\",\"email(gmail.com,example.com)\"],\"phoneNumber\":\"phoneNumber()\",\"location\":{\"street\":\"street()\",\"city\":\"city()\",\"state\":\"state()\",\"country\":\"country()\",\"zip\":\"zipCode()\",\"coordinates\":{\"latitude\":\"latitude()\",\"longitude\":\"longitude()\"}},\"website\":\"url()\",\"domain\":\"domainName()\",\"job\":{\"title\":\"jobTitle()\",\"descriptor\":\"jobDescriptor()\",\"area\":\"jobArea()\",\"type\":\"jobType()\",\"company\":\"companyName()\"},\"creditCard\":{\"number\":\"creditCardNumber()\",\"cvv\":\"creditCardCVV()\",\"issuer\":\"creditCardIssuer()\"},\"uuid\":\"guid()\",\"objectId\":\"objectId()\"}]}";
-                char * dados = "teste vai pfv";
+                char * dados = "{\"result\":[\"repeat(1,2)\",{\"status\":\"enum(active,disabled)\",\"name\":{\"first\":\"firstName()\",\"middle\":\"middleName()\",\"last\":\"lastName()\"},\"username\":\"this.name.first-this.name.last\",\"password\":\"password()\",\"emails\":[\"repeat(2)\",\"email(gmail.com,example.com)\"],\"phoneNumber\":\"phoneNumber()\",\"location\":{\"street\":\"street()\",\"city\":\"city()\",\"state\":\"state()\",\"country\":\"country()\",\"zip\":\"zipCode()\",\"coordinates\":{\"latitude\":\"latitude()\",\"longitude\":\"longitude()\"}},\"website\":\"url()\",\"domain\":\"domainName()\",\"job\":{\"title\":\"jobTitle()\",\"descriptor\":\"jobDescriptor()\",\"area\":\"jobArea()\",\"type\":\"jobType()\",\"company\":\"companyName()\"},\"creditCard\":{\"number\":\"creditCardNumber()\",\"cvv\":\"creditCardCVV()\",\"issuer\":\"creditCardIssuer()\"},\"uuid\":\"guid()\",\"objectId\":\"objectId()\"}]}";
+                // char * dados = "teste vai pfv";
                 sendMQTTpayload((char *)"UWB_test/teste1", dados);
                 timeControl = HAL_GetTick();
             }
