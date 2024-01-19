@@ -196,6 +196,8 @@ int sendMQTTpayload ( char * topic, char * payload ) {
     encode_variable_length_integer( (int)msgLen, (unsigned char *)encoded_msg, &msg_byte_num );
     
     int16_t totalSize = sizeof( HeaderFlag ) + sizeof( msgLen ) + sizeof(topicLen) + (int)strlen(topic) + (int)strlen(payload);
+    totalSize += ( msgLen >= 240 );
+
     char * ptr = (char*)malloc( totalSize );
     if ( ptr == NULL ) return 0;
     
