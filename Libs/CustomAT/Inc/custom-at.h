@@ -124,7 +124,7 @@ typedef struct
 
 void setExpected(char *newExpected);
 
-void setRejectExcepcted(char *newReject);
+void setRejectExpected(char *newReject);
 
 void AT_usart_init_config(UART_HandleTypeDef *huart, char *apn_host, char *apn_user, char *apn_psw, char * mqtt_host, char * mqtt_user, char * mqtt_psw, int mqtt_port);
 
@@ -149,6 +149,8 @@ void set_tcp_closed_state ();
 void set_error_state ();
 
 int is_error_count_out ();
+
+void gsm_uart_callback ( UART_HandleTypeDef * huart, uint16_t Size );
 
 void resolveUARTCtrl ( UART_HandleTypeDef *huart );
 

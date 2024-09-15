@@ -69,8 +69,10 @@ void Error_Handler(void);
 #define DW_MOSI_GPIO_Port GPIOA
 #define DW_IRQn_Pin GPIO_PIN_0
 #define DW_IRQn_GPIO_Port GPIOB
+#define DW_IRQn_EXTI_IRQn EXTI0_IRQn
 #define DW_RESET_Pin GPIO_PIN_12
 #define DW_RESET_GPIO_Port GPIOB
+
 /* USER CODE BEGIN Private defines */
 #define EX_05B_DEF
 #define HALT_IF_DEBUGGING()                               \

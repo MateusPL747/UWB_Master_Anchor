@@ -50,7 +50,6 @@ static dwt_config_t config = {
 #define POLL_DISTANCE
 
 /* Frames used in the ranging process. See NOTE 2 below. */
-static uint8 ping_msg[] = {'W', 'A', 'V', 'E', 0, 0};
 static uint8 tx_ping[] = { 0xFE, 0, 0, 0, 0};
 static uint8 rx_poll_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'W', 'A', 'V', 'E', 0x21, 0, 0};
 static uint8 tx_resp_msg[] = {0x41, 0x88, 0, 0xCA, 0xDE, 'V', 'E', 'W', 'A', 0x10, 0x02, 0, 0, 0, 0};

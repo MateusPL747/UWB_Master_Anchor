@@ -14,7 +14,7 @@
             "group": "build",
             "type": "shell",
             "command": "make",
-            "args": ["all"/*, "-j16"*/]
+            "args": ["all", "-j16", "--output-sync"]
         },
         {
             "label": "JErase",
@@ -39,13 +39,25 @@
             "dependsOn": ["JErase"]
         },
         {
+            "label": "closeDebugger",
+            "type": "shell",
+            "group": "build",
+            "command": "$wshell = New-Object -ComObject wscript.shell ; $wshell.SendKeys('+{F5}') # Simula Shift + F5"
+        },
+        {
+            "label": "openDebugger",
+            "type": "shell",
+            "group": "build",
+            "command": "$wshell = New-Object -ComObject wscript.shell ; $wshell.SendKeys('{F5}') # Simula F5"
+        },
+        {
             "label": "start",
             "dependsOrder": "sequence",
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
-            "dependsOn": ["Build clean", "Build all", "JFlash"]
+            "dependsOn": ["closeDebugger", "Build all", "JFlash", "openDebugger"]
         }
     ]
 }
