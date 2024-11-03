@@ -15,7 +15,8 @@
         "port.h": "c",
         "deca_spi.h": "c",
         "stdio.h": "c",
-        "compare": "c"
+        "compare": "c",
+        "stdint.h": "c"
     },
 
     "cortex-debug.gdbPath": "C:/Program Files (x86)/GNU Arm Embedded Toolchain/10 2021.10/bin/arm-none-eabi-gdb",

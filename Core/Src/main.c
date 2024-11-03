@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include "ble_stream.h"
 #include "custom-at.h"
+#include "custom-mqtt.h"
 #include "ex_05b_main.c"
 #include "deca_device_api.h"
 #include "deca_regs.h"
@@ -51,6 +52,7 @@ UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+uint32_t timeToPrint = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,7 +66,6 @@ static void MX_USART3_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
 /* USER CODE END 0 */
 
 /**
@@ -100,26 +101,27 @@ int main(void)
   MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
   ble_sniff_init( &huart3 );
-  
+
+  // setup_DW1000RSTnIRQ(0);
+  // dw_main( &huart1 );
+
+  mqtt_init (
+    NULL,
+    NULL,
+    "mqtt-explorer-drvttgh"
+  );
+
+  AT_usart_init_config(
+    &huart1,
+    "claro.com.br", "claro", "claro", 1497,
+    "broker.hivemq.com", "", "", 1883
+  );
+
   for ( int i = 0; i < 100; i++ ){
     HAL_GPIO_TogglePin( LED_1_GPIO_Port, LED_1_Pin );
     HAL_Delay(50);
   };
 
-  // setup_DW1000RSTnIRQ(0);
-  // dw_main( &huart1 );
-
-  // mqtt_init (
-  //   NULL,
-  //   NULL,
-  //   "mqtt-explorer-drvttgh"
-  // );
-
-  // AT_usart_init_config(
-  //   &huart1,
-  //   "claro.com.br", "claro", "claro",
-  //   "broker.hivemq.com", "", "", 1883
-  // );
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,10 +131,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-    // GSM_task();
+    GSM_task();
 
-    HAL_GPIO_TogglePin( LED_2_GPIO_Port, LED_2_Pin );
+    mqtt_task();
+    ble_task ();
+
     HAL_Delay( 1 );
+
+    if ( HAL_GetTick() - timeToPrint > 1000 ) {
+      HAL_GPIO_TogglePin( LED_2_GPIO_Port, LED_2_Pin );
+      timeToPrint = HAL_GetTick();
+    }
   
   }
   /* USER CODE END 3 */
@@ -230,7 +239,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
+  huart1.Init.BaudRate = 9600;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -301,6 +310,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(DW_NSS_GPIO_Port, DW_NSS_Pin, GPIO_PIN_SET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GSM_RST_Pin|GSM_PWR_KEY_Pin|GSM_PWR_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pins : LED_2_Pin LED_1_Pin */
   GPIO_InitStruct.Pin = LED_2_Pin|LED_1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -326,6 +338,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(DW_RESET_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : GSM_RST_Pin GSM_PWR_KEY_Pin GSM_PWR_Pin */
+  GPIO_InitStruct.Pin = GSM_RST_Pin|GSM_PWR_KEY_Pin|GSM_PWR_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);

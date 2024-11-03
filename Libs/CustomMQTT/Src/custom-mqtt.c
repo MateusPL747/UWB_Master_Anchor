@@ -6,8 +6,8 @@
 #include "custom-mqtt.h"
 #include "custom-at.h"
 
-extern ATmssg_t stateMachine; // Defined here but declared at file: ./main.c
-extern mqt_t mqtt_handle;
+mqt_t mqtt_handler;
+extern ATmssg_t GSMstateMachine; // Declared at custom-at.c
 
 int encode_variable_length_integer(int value, unsigned char *encoded_bytes, int *num_bytes) {
     // Check if the value is negative
@@ -62,7 +62,7 @@ void MemoryToString( const void *buffer, size_t length, char **hexString ) {
     (*hexString)[hexStringLength - 1] = '\0';
 }
 
-int createMqttConnection ( char* clientID, char* User, char*Password ) {
+int createMqttConnectionPacket ( char* clientID, char* User, char*Password ) {
     
     int16_t ProtocolNameLen = (0x04 << 8) | ((0x04>>8) & 0xFF);  //Standard value reverse endianess
     int16_t IDlen = strlen(clientID);
@@ -159,22 +159,16 @@ int createMqttConnection ( char* clientID, char* User, char*Password ) {
         memcpy( &buff[14 + IDlen + sizeof(userLen) + userOffset + sizeof(passwordLen) ], Password, strlen( Password ) );
     }
     
-    memcpy( mqtt_handle.msgBuff, buff, totalMsgLen );
-    sendAT( "AT+CIPSEND\r\n" );
+    memcpy( mqtt_handler.msgBuff, buff, totalMsgLen + 1 );
+    mqtt_handler.msgLen = totalMsgLen + 1;
 
-    mqtt_handle.availableToSend = 1;
-
-    for ( int i = 0; i <= totalMsgLen; i++ ) {
-        printf( "%02X ", buff[i] );
-    }
-
-    memset( buff, 0, totalMsgLen );
+    memset( buff, 0, totalMsgLen ); //  Sets 0 to all buffer
     free( buff );
 
     return 1;
 }
 
-void sendMQTTpayload ( char * topic, char * payload ) {
+void createMQTTpayloadPacket ( char * topic ) {
     
     int8_t HeaderFlag = 0x30; //    Standard value
     int16_t topicL = strlen( topic );
@@ -184,14 +178,14 @@ void sendMQTTpayload ( char * topic, char * payload ) {
         Controlls the size that should be reserved for the payload message. Note that, depending on the payload size
         the msgSize reserved on the TCP packet should be 1 or 2 bytes
     */
-    int16_t msgLen = strlen( topic ) + strlen( payload ) + sizeof( topicLen );
+    int8_t msgLen = strlen( topic ) + mqtt_handler.msgLen + sizeof( topicLen );
 
     unsigned char encoded_msg[16];
     int msg_byte_num;
     
     encode_variable_length_integer( (int)msgLen, (unsigned char *)encoded_msg, &msg_byte_num );
     
-    int16_t totalSize = sizeof( HeaderFlag ) + sizeof( msgLen ) + sizeof(topicLen) + (int)strlen(topic) + (int)strlen(payload);
+    int16_t totalSize = sizeof( HeaderFlag ) + sizeof( msgLen ) + sizeof(topicLen) + (int)strlen(topic) + mqtt_handler.msgLen;
     char * ptr = (char*)malloc( totalSize );
     if ( ptr == NULL ) return;
     
@@ -200,15 +194,13 @@ void sendMQTTpayload ( char * topic, char * payload ) {
     
     memcpy( &ptr[2 + msg_byte_num - 1], &topicLen, sizeof(topicLen) );
     memcpy( &ptr[4 + msg_byte_num - 1], topic, strlen(topic) );
-    memcpy( &ptr[4 + msg_byte_num - 1 + topicL], payload, strlen(payload) );
+    memcpy( &ptr[4 + msg_byte_num - 1 + topicL], mqtt_handler.msgBuff, mqtt_handler.msgLen );
 
-    char * target;
-    MemoryToString( ptr, totalSize, &target );
-    free( target );
+    memcpy( mqtt_handler.msgBuff, ptr, totalSize );
+    mqtt_handler.msgLen = totalSize;
 
     memset( ptr, 0, totalSize );
     free( ptr );
-
 
 }
 
@@ -217,17 +209,50 @@ void mqtt_init (
     char * mqtt_psw,
     char * mqtt_id
 ) {
-    mqtt_handle.availableToSend = 0;
+    mqtt_handler.availableToSend = 0;
+    mqtt_handler.requestForSent = 0;
 
-    mqtt_handle.user = mqtt_user;
-    mqtt_handle.psw = mqtt_psw;
-    mqtt_handle.id = mqtt_id;
+    mqtt_handler.user = mqtt_user;
+    mqtt_handler.psw = mqtt_psw;
+    mqtt_handler.id = mqtt_id;
 }
 
+void connectToMQTTBroker () {
+    
+    /* Here, the mqtt connect packet will be created and the mqtt_handle.availableToSend will be set to 1 for the first time */
+    createMqttConnectionPacket( mqtt_handler.id, mqtt_handler.user, mqtt_handler.psw );
+
+    set_sending_msg_state(); //After set up packet, set gsm state machine as SENDING_MSG
+    sendAT( "AT+CIPSEND\r\n", 12U );
+}
+
+void sendPendingMessages() {
+
+    /* Here, the payload packet will be created */
+    createMQTTpayloadPacket((char *)"UWB_test/teste1" );
+
+    set_sending_msg_state(); // After set up packet, set gsm state machine as SENDING_MSG
+    sendAT( "AT+CIPSEND\r\n", 12U );
+}
+
+void check_for_sending_message_timeout () {
+    if ( GSMstateMachine.state != SENDING_MSG ) return;
+
+    if ( HAL_GetTick() - GSMstateMachine.lastChangestateTime > 5000 ) {;
+        set_initial_state();
+    }
+}
+
+int32_t lastSendMoment = 0;
 void mqtt_task () {
 
-    //  Handle connection and re-connection
-    if ( stateMachine.state == CONNECT_OK || mqtt_handle.availableToSend ) {
-        // createMqttConnection ();
-    }
+    check_for_sending_message_timeout();
+
+    if ( GSMstateMachine.state != CONNECT_OK ) return; // This task only works when GPRS is connected
+
+    if ( mqtt_handler.pending_mqtt_connection ) connectToMQTTBroker();
+
+    if ( !mqtt_handler.pending_mqtt_connection && mqtt_handler.requestForSent ) sendPendingMessages();
+
+
 }

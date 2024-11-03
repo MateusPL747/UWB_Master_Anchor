@@ -72,6 +72,12 @@ void Error_Handler(void);
 #define DW_IRQn_EXTI_IRQn EXTI0_IRQn
 #define DW_RESET_Pin GPIO_PIN_12
 #define DW_RESET_GPIO_Port GPIOB
+#define GSM_RST_Pin GPIO_PIN_5
+#define GSM_RST_GPIO_Port GPIOB
+#define GSM_PWR_KEY_Pin GPIO_PIN_8
+#define GSM_PWR_KEY_GPIO_Port GPIOB
+#define GSM_PWR_Pin GPIO_PIN_9
+#define GSM_PWR_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 #define EX_05B_DEF
