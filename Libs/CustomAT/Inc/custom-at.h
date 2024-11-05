@@ -148,6 +148,8 @@ void sendAT(char *cmd, int len);
 
 void GSM_task();
 
+void set_initial_state();
+
 void set_waiting_sim_state();
 
 void set_idle_disconnected_state();

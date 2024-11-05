@@ -46,6 +46,7 @@ Core/Src/deca_sleep.c \
 Core/Src/deca_spi.c \
 Core/Src/port.c \
 Core/Src/app_uart.c \
+Core/Src/stm32_uidhash.c \
 Libs/BLE_Stream/Src/ble_stream.c \
 Libs/CustomAT/Src/GSMStateMachine.c \
 Libs/CustomAT/Src/custom-at.c \

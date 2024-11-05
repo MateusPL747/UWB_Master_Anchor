@@ -80,7 +80,7 @@ void Error_Handler(void);
 #define GSM_PWR_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-#define EX_05B_DEF
+// #define EX_05B_DEF
 #define HALT_IF_DEBUGGING()                               \
 do {                                                      \
   if ( (*(volatile uint32_t *)0xE000EDF0) & (1 << 0) ) {  \

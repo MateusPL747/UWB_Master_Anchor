@@ -1,3 +1,6 @@
+#ifndef CUSTOM_MQTT_H
+#define CUSTOM_MQTT_H
+
 #include <stdint.h>
 
 int encode_variable_length_integer(int value, unsigned char *encoded_bytes, int *num_bytes);
@@ -29,3 +32,5 @@ typedef struct {
     char * psw;
 
 } mqt_t;
+
+#endif

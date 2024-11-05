@@ -21,10 +21,10 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ex_05b_main.h"
 #include "ble_stream.h"
 #include "custom-at.h"
 #include "custom-mqtt.h"
-#include "ex_05b_main.c"
 #include "deca_device_api.h"
 #include "deca_regs.h"
 #include "deca_spi.h"
@@ -103,7 +103,7 @@ int main(void)
   ble_sniff_init( &huart3 );
 
   // setup_DW1000RSTnIRQ(0);
-  // dw_main( &huart1 );
+  uwb_setup();
 
   mqtt_init (
     NULL,
@@ -135,6 +135,8 @@ int main(void)
 
     mqtt_task();
     ble_task ();
+
+    uwb_loop();
 
     HAL_Delay( 1 );
 
